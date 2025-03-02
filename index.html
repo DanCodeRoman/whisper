@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Whisper - Anonymous Message Board</title>
+  <style>
+    :root {
+      --primary-color: #4a6fa5;
+      --secondary-color: #166088;
+      --accent-color: #c0d6df;
+      --light-color: #f5f5f5;
+      --dark-color: #333333;
+      --success-color: #4caf50;
+      --warning-color: #ff9800;
+      --danger-color: #f44336;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f2f5;
+      color: var(--dark-color);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      opacity: 0.8;
+    }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      margin: 2rem 0;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      background-color: white;
+    }
+
+    .tab {
+      padding: 1rem 2rem;
+      cursor: pointer;
+      background-color: white;
+      border: none;
+      flex-grow: 1;
+      font-size: 1.1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    .tab:hover {
+      background-color: var(--accent-color);
+    }
+
+    .tab.active {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .tab-content {
+      display: none;
+      padding: 2rem;
+      border-radius: 8px;
+      background-color: white;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: var(--dark-color);
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 0.8rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus {
+      border-color: var(--primary-color);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
+    }
+
+    textarea {
+      min-height: 150px;
+      resize: vertical;
+    }
+
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background-color: var(--secondary-color);
+    }
+
+    .message-board {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .message-card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      cursor: pointer;
+      aspect-ratio: 4/3;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .message-author {
+      background-color: var(--accent-color);
+      color: var(--dark-color);
+      padding: 0.8rem;
+      text-align: center;
+      font-weight: 600;
+      z-index: 10;
+      position: relative;
+    }
+
+    .message-content {
+      padding: 1.5rem;
+      margin: auto;
+      text-align: center;
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: transparent;
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+      transition: text-shadow 0.5s ease, color 0.5s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .message-content::before {
+      content: "Click to reveal message";
+      position: absolute;
+      color: var(--dark-color);
+      font-weight: 500;
+      opacity: 0.7;
+    }
+
+    .message-content.revealed {
+      color: var(--dark-color);
+      text-shadow: none;
+    }
+
+    .message-content.revealed::before {
+      display: none;
+    }
+
+    .message-card.read {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .message-card.read .message-content::before {
+      content: "Message has been read";
+    }
+
+    .status {
+      text-align: center;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+
+    .status.success {
+      background-color: rgba(76, 175, 80, 0.2);
+      color: #2e7d32;
+    }
+
+    .status.error {
+      background-color: rgba(244, 67, 54, 0.2);
+      color: #c62828;
+    }
+
+    .status.info {
+      background-color: rgba(33, 150, 243, 0.2);
+      color: #1565c0;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: #888;
+    }
+
+    .empty-state .icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.4;
+    }
+
+    .notification-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--danger-color);
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      font-size: 0.8rem;
+      margin-left: 0.5rem;
+      font-weight: bold;
+    }
+
+    .spinner {
+      border: 3px solid rgba(0, 0, 0, 0.1);
+      border-top: 3px solid var(--primary-color);
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading {
+      display: flex;
+      justify-content: center;
+      padding: 2rem;
+      color: #666;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+      padding: 1rem;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+      .tabs {
+        flex-direction: column;
+      }
+      
+      .message-board {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Whisper</h1>
+    <div class="subtitle">Share anonymous messages with the world</div>
+  </header>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab active" data-tab="send">Send a Message to the World</button>
+      <button class="tab" data-tab="read">Read Messages <span id="unreadCount" class="notification-badge" style="display: none;">0</span></button>
+    </div>
+
+    <div class="tab-content active" id="send-tab">
+      <div id="send-status"></div>
+      <form id="message-form">
+        <div class="form-group">
+          <label for="author">Your Name (optional)</label>
+          <input type="text" id="author" placeholder="Anonymous">
+        </div>
+        <div class="form-group">
+          <label for="message">Your Message</label>
+          <textarea id="message" placeholder="Share your thoughts with the world..." required></textarea>
+        </div>
+        <button type="submit" id="submit-btn">Send Message</button>
+      </form>
+    </div>
+
+    <div class="tab-content" id="read-tab">
+      <div id="read-status"></div>
+      <div id="message-board" class="message-board">
+        <div class="loading">
+          <span class="spinner"></span> Loading messages...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Whisper &copy; 2025 - Messages are stored using Supabase's free tier</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // DOM Elements
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const messageForm = document.getElementById('message-form');
+    const authorInput = document.getElementById('author');
+    const messageInput = document.getElementById('message');
+    const submitBtn = document.getElementById('submit-btn');
+    const messageBoard = document.getElementById('message-board');
+    const sendStatus = document.getElementById('send-status');
+    const readStatus = document.getElementById('read-status');
+    const unreadCount = document.getElementById('unreadCount');
+
+    // Supabase Configuration - Replace with your own Supabase URL and anon key
+    const SUPABASE_URL = 'https://YOUR_SUPABASE_URL.supabase.co';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    
+    let supabase = null;
+    
+    try {
+      supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (error) {
+      console.error('Supabase client not initialized:', error);
+    }
+
+    // Read message history from local storage
+    let readMessages = JSON.parse(localStorage.getItem('whisper_read_messages')) || [];
+
+    // Tab switching
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetTab = tab.getAttribute('data-tab');
+        
+        // Update active state for tabs
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Show the correct content
+        tabContents.forEach(content => {
+          content.classList.remove('active');
+          if (content.id === `${targetTab}-tab`) {
+            content.classList.add('active');
+          }
+        });
+        
+        // Load messages when switching to read tab
+        if (targetTab === 'read') {
+          loadMessages();
+          // Reset notification badge
+          unreadCount.style.display = 'none';
+        }
+      });
+    });
+
+    // Form submission
+    messageForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const author = authorInput.value.trim() || 'Anonymous';
+      const message = messageInput.value.trim();
+      
+      if (!message) {
+        showStatus(sendStatus, 'Please enter a message', 'error');
+        return;
+      }
+      
+      // Disable submit button and show loading state
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner"></span> Sending...';
+      
+      try {
+        if (!supabase) {
+          throw new Error('Supabase client not initialized');
+        }
+        
+        // Generate a unique ID for the message
+        const messageId = generateUniqueId();
+        
+        // Create message object
+        const messageObj = {
+          id: messageId,
+          author: author,
+          content: message,
+          created_at: new Date().toISOString(),
+          read_count: 0
+        };
+        
+        // Save to Supabase
+        const { error } = await supabase
+          .from('messages')
+          .insert([messageObj]);
+        
+        if (error) throw error;
+        
+        // Clear form and show success message
+        messageForm.reset();
+        showStatus(sendStatus, 'Message sent successfully!', 'success');
+        
+        // Update unread count
+        updateUnreadCount(1);
+      } catch (error) {
+        console.error('Error sending message:', error);
+        
+        // Fallback to using localStorage if Supabase isn't available
+        if (!supabase || error.message === 'Supabase client not initialized') {
+          try {
+            // Get existing messages from localStorage
+            let localMessages = JSON.parse(localStorage.getItem('whisper_messages')) || [];
+            
+            // Add new message
+            const messageObj = {
+              id: generateUniqueId(),
+              author: author,
+              content: message,
+              created_at: new Date().toISOString(),
+              read_count: 0
+            };
+            
+            localMessages.push(messageObj);
+            
+            // Save back to localStorage
+            localStorage.setItem('whisper_messages', JSON.stringify(localMessages));
+            
+            // Clear form and show success message
+            messageForm.reset();
+            showStatus(sendStatus, 'Message stored locally!', 'success');
+            
+            // Update unread count
+            updateUnreadCount(1);
+          } catch (localError) {
+            showStatus(sendStatus, 'Failed to store message. Please try again.', 'error');
+          }
+        } else {
+          showStatus(sendStatus, 'Failed to send message. Please try again.', 'error');
+        }
+      } finally {
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Message';
+      }
+    });
+
+    // Load messages
+    async function loadMessages() {
+      // Clear the message board and show loading state
+      messageBoard.innerHTML = '<div class="loading"><span class="spinner"></span> Loading messages...</div>';
+      
+      try {
+        let messages = [];
+        
+        if (supabase) {
+          // Fetch messages from Supabase
+          const { data, error } = await supabase
+            .from('messages')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+          
+          if (error) throw error;
+          messages = data;
+        } else {
+          // Fallback to localStorage
+          messages = JSON.parse(localStorage.getItem('whisper_messages')) || [];
+          messages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        }
+        
+        // Clear the message board
+        messageBoard.innerHTML = '';
+        
+        if (messages.length === 0) {
+          messageBoard.innerHTML = `
+            <div class="empty-state">
+              <div class="icon">📭</div>
+              <h3>No messages yet</h3>
+              <p>Be the first to send a message to the world!</p>
+            </div>
+          `;
+          return;
+        }
+        
+        // Display messages
+        messages.forEach(message => {
+          const isRead = readMessages.includes(message.id);
+          
+          const messageCard = document.createElement('div');
+          messageCard.className = `message-card ${isRead ? 'read' : ''}`;
+          messageCard.dataset.id = message.id;
+          
+          messageCard.innerHTML = `
+            <div class="message-author">${escapeHTML(message.author)}</div>
+            <div class="message-content ${isRead ? 'revealed' : ''}">${escapeHTML(message.content)}</div>
+          `;
+          
+          // Add click event to reveal message
+          if (!isRead) {
+            messageCard.addEventListener('click', () => revealMessage(message.id, messageCard));
+          }
+          
+          messageBoard.appendChild(messageCard);
+        });
+      } catch (error) {
+        console.error('Error loading messages:', error);
+        messageBoard.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">⚠️</div>
+            <h3>Error loading messages</h3>
+            <p>Please try again later.</p>
+          </div>
+        `;
+      }
+    }
+
+    // Reveal message
+    async function revealMessage(messageId, messageCard) {
+      const contentEl = messageCard.querySelector('.message-content');
+      
+      // Reveal the message content
+      contentEl.classList.add('revealed');
+      
+      // Mark as read locally
+      if (!readMessages.includes(messageId)) {
+        readMessages.push(messageId);
+        localStorage.setItem('whisper_read_messages', JSON.stringify(readMessages));
+      }
+      
+      try {
+        if (supabase) {
+          // Update read count in database
+          const { error } = await supabase
+            .from('messages')
+            .update({ read_count: supabase.rpc('increment', { x: 1 }) })
+            .eq('id', messageId);
+          
+          if (error) throw error;
+        } else {
+          // Update read count in localStorage
+          const localMessages = JSON.parse(localStorage.getItem('whisper_messages')) || [];
+          const messageIndex = localMessages.findIndex(msg => msg.id === messageId);
+          
+          if (messageIndex !== -1) {
+            localMessages[messageIndex].read_count += 1;
+            localStorage.setItem('whisper_messages', JSON.stringify(localMessages));
+          }
+        }
+      } catch (error) {
+        console.error('Error updating read count:', error);
+      }
+      
+      // After 5 seconds, mark the message as read and fade it out
+      setTimeout(() => {
+        messageCard.classList.add('read');
+      }, 5000);
+    }
+
+    // Helper to show status messages
+    function showStatus(element, message, type) {
+      element.innerHTML = `<div class="status ${type}">${message}</div>`;
+      
+      // Clear status after 3 seconds
+      setTimeout(() => {
+        element.innerHTML = '';
+      }, 3000);
+    }
+
+    // Update unread count badge
+    function updateUnreadCount(increment = 0) {
+      let count = parseInt(unreadCount.textContent) || 0;
+      count += increment;
+      
+      if (count > 0) {
+        unreadCount.textContent = count;
+        unreadCount.style.display = 'inline-flex';
+      } else {
+        unreadCount.style.display = 'none';
+      }
+    }
+
+    // Generate a unique ID
+    function generateUniqueId() {
+      return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+    }
+
+    // Escape HTML to prevent XSS
+    function escapeHTML(str) {
+      return str.replace(/[&<>"']/g, 
+        tag => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[tag]));
+    }
+
+    // Polling for new messages (every 30 seconds)
+    setInterval(async () => {
+      if (!supabase) return;
+      
+      try {
+        // Only check for new messages if not on the read tab
+        if (!document.getElementById('read-tab').classList.contains('active')) {
+          const { data, error } = await supabase
+            .from('messages')
+            .select('id')
+            .gt('created_at', new Date(Date.now() - 300000).toISOString()); // Last 5 minutes
+          
+          if (error) throw error;
+          
+          if (data) {
+            // Count messages that haven't been read
+            const newMessages = data.filter(msg => !readMessages.includes(msg.id));
+            if (newMessages.length > 0) {
+              updateUnreadCount(newMessages.length);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error polling for new messages:', error);
+      }
+    }, 30000);
+
+    // Initial page load
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check for URL params to potentially switch tabs
+      const urlParams = new URLSearchParams(window.location.search);
+      const tab = urlParams.get('tab');
+      
+      if (tab === 'read') {
+        document.querySelector('.tab[data-tab="read"]').click();
+      }
+    });
+  </script>
+</body>
+</html>
