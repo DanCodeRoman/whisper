@@ -380,11 +380,14 @@
     
     let supabase = null;
     
-    try {
-      supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    } catch (error) {
-      console.error('Supabase client not initialized:', error);
-    }
+   try {
+  console.log("Attempting to create Supabase client...");
+  // The correct way to access the Supabase client with the UMD build
+  supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  console.log("Supabase client created successfully");
+} catch (error) {
+  console.error('Supabase client initialization error:', error);
+}
 
     // Read message history from local storage
     let readMessages = JSON.parse(localStorage.getItem('whisper_read_messages')) || [];
