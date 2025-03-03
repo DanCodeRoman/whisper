@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Whisper - Anonymous Message Board</title>
   <style>
     :root {
@@ -21,22 +21,20 @@
       box-sizing: border-box;
     }
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: "Helvetica Neue", sans-serif;
       background-color: #f0f2f5;
       color: var(--dark-color);
       line-height: 1.6;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
       padding: 20px;
     }
     header {
-      background-color: var(--primary-color);
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
       color: white;
-      padding: 1rem;
+      padding: 1.5rem;
       text-align: center;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      margin-bottom: 20px;
     }
     header h1 {
       font-size: 2.5rem;
@@ -44,7 +42,15 @@
     }
     .subtitle {
       font-size: 1.1rem;
-      opacity: 0.8;
+      opacity: 0.9;
+    }
+    .container {
+      background: #fff;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     .tabs {
       display: flex;
@@ -52,33 +58,34 @@
       margin: 2rem 0;
       border-radius: 8px;
       overflow: hidden;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      background-color: white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      background-color: #e0e0e0;
     }
     .tab {
       padding: 1rem 2rem;
       cursor: pointer;
-      background-color: white;
+      background-color: #e0e0e0;
       border: none;
       flex-grow: 1;
       font-size: 1.1rem;
       font-weight: 600;
-      transition: all 0.3s ease;
+      color: black;
+      transition: background-color 0.3s ease;
       outline: none;
     }
     .tab:hover {
       background-color: var(--accent-color);
     }
     .tab.active {
-      background-color: var(--primary-color);
-      color: white;
+      background-color: #fff;
+      color: black;
     }
     .tab-content {
       display: none;
       padding: 2rem;
       border-radius: 8px;
-      background-color: white;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      background-color: #fff;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
       margin-bottom: 2rem;
     }
     .tab-content.active {
@@ -86,8 +93,14 @@
       animation: fadeIn 0.5s ease;
     }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
     .form-group {
       margin-bottom: 1.5rem;
@@ -137,20 +150,20 @@
       gap: 1.5rem;
     }
     .message-card {
-      background-color: white;
+      background-color: #fff;
       border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
       overflow: hidden;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, opacity 0.5s ease;
       position: relative;
       cursor: pointer;
-      aspect-ratio: 4/3;
       display: flex;
       flex-direction: column;
+      padding-bottom: 1rem;
     }
     .message-card:hover {
       transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
     }
     .message-author {
       background-color: var(--accent-color);
@@ -158,43 +171,19 @@
       padding: 0.8rem;
       text-align: center;
       font-weight: 600;
-      z-index: 10;
-      position: relative;
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
     }
     .message-content {
       padding: 1.5rem;
-      margin: auto;
       text-align: center;
       flex-grow: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: transparent;
-      text-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
-      transition: text-shadow 0.5s ease, color 0.5s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    .message-content::before {
-      content: "Click to reveal message";
-      position: absolute;
       color: var(--dark-color);
-      font-weight: 500;
-      opacity: 0.7;
+      font-size: 1rem;
+      display: none; /* initially hidden */
     }
     .message-content.revealed {
-      color: var(--dark-color);
-      text-shadow: none;
-    }
-    .message-content.revealed::before {
-      display: none;
-    }
-    .message-card.read {
-      opacity: 0.6;
-      pointer-events: none;
-    }
-    .message-card.read .message-content::before {
-      content: "Message has been read";
+      display: block;
     }
     .status {
       text-align: center;
@@ -284,7 +273,7 @@
 
   <div class="container">
     <div class="tabs">
-      <button class="tab active" data-tab="send">Send a Message to the World</button>
+      <button class="tab active" data-tab="send">Send a Message</button>
       <button class="tab" data-tab="read">Read Messages <span id="unreadCount" class="notification-badge" style="display: none;">0</span></button>
     </div>
 
@@ -293,7 +282,7 @@
       <form id="message-form">
         <div class="form-group">
           <label for="author">Your Name (optional)</label>
-          <input type="text" id="author" placeholder="Anonymous">
+          <input type="text" id="author" placeholder="Anonymous" />
         </div>
         <div class="form-group">
           <label for="message">Your Message</label>
@@ -334,7 +323,7 @@
     // Supabase Configuration - Replace with your own Supabase URL and anon key
     const SUPABASE_URL = 'https://epdosrdlkdtbyqqffvcw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZG9zcmRsa2R0YnlxcWZmdmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTg3ODQsImV4cCI6MjA1NjUzNDc4NH0.XqQM4sPuO0mZfWDmXPhis1FAV75rUw1fZh1Fvr5ugyA';
-    
+
     // Create the Supabase client and store it in a variable named "supabaseClient"
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     console.log("Supabase client created successfully");
@@ -366,20 +355,16 @@
       e.preventDefault();
       const author = authorInput.value.trim() || 'Anonymous';
       const message = messageInput.value.trim();
-      
       if (!message) {
         showStatus(sendStatus, 'Please enter a message', 'error');
         return;
       }
-      
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="spinner"></span> Sending...';
-      
       try {
         if (!supabaseClient) {
           throw new Error('Supabase client not initialized');
         }
-        
         // Generate a valid UUID for the message id using crypto.randomUUID()
         const messageId = crypto.randomUUID();
         const messageObj = {
@@ -389,13 +374,8 @@
           created_at: new Date().toISOString(),
           read_count: 0
         };
-        
-        const { error } = await supabaseClient
-          .from('messages')
-          .insert([messageObj]);
-        
+        const { error } = await supabaseClient.from('messages').insert([messageObj]);
         if (error) throw error;
-        
         messageForm.reset();
         showStatus(sendStatus, 'Message sent successfully!', 'success');
         updateUnreadCount(1);
@@ -431,23 +411,18 @@
     // Load messages
     async function loadMessages() {
       messageBoard.innerHTML = '<div class="loading"><span class="spinner"></span> Loading messages...</div>';
-      
       try {
         let messages = [];
         if (supabaseClient) {
-          const { data, error } = await supabaseClient
-            .from('messages')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(50);
-          
+          const { data, error } = await supabaseClient.from('messages').select('*').order('created_at', { ascending: false }).limit(50);
           if (error) throw error;
-          messages = data;
+          // Filter out messages that have been viewed by the user
+          messages = data.filter(message => !readMessages.includes(message.id));
         } else {
           messages = JSON.parse(localStorage.getItem('whisper_messages')) || [];
+          messages = messages.filter(message => !readMessages.includes(message.id));
           messages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         }
-        
         messageBoard.innerHTML = '';
         if (messages.length === 0) {
           messageBoard.innerHTML = `
@@ -459,19 +434,16 @@
           `;
           return;
         }
-        
         messages.forEach(message => {
-          const isRead = readMessages.includes(message.id);
           const messageCard = document.createElement('div');
-          messageCard.className = `message-card ${isRead ? 'read' : ''}`;
+          messageCard.className = 'message-card';
           messageCard.dataset.id = message.id;
           messageCard.innerHTML = `
             <div class="message-author">${escapeHTML(message.author)}</div>
-            <div class="message-content ${isRead ? 'revealed' : ''}">${escapeHTML(message.content)}</div>
+            <div class="message-content">${escapeHTML(message.content)}</div>
           `;
-          if (!isRead) {
-            messageCard.addEventListener('click', () => revealMessage(message.id, messageCard));
-          }
+          // Add click event to reveal and remove the message
+          messageCard.addEventListener('click', () => revealMessage(message.id, messageCard));
           messageBoard.appendChild(messageCard);
         });
       } catch (error) {
@@ -486,19 +458,18 @@
       }
     }
 
-    // Reveal message
+    // Reveal message and then remove it
     async function revealMessage(messageId, messageCard) {
       const contentEl = messageCard.querySelector('.message-content');
+      // Reveal the message content
       contentEl.classList.add('revealed');
-      
       if (!readMessages.includes(messageId)) {
         readMessages.push(messageId);
         localStorage.setItem('whisper_read_messages', JSON.stringify(readMessages));
       }
-      
       try {
         if (supabaseClient) {
-          // Call the RPC function to increment read_count using a valid UUID messageId
+          // Call the RPC function to increment read_count
           const { error } = await supabaseClient.rpc('increment_read_count', { message_id: messageId });
           if (error) throw error;
         } else {
@@ -512,9 +483,13 @@
       } catch (error) {
         console.error('Error updating read count:', error);
       }
-      
+      // After 5 seconds, fade out and remove the message card
       setTimeout(() => {
-        messageCard.classList.add('read');
+        messageCard.style.transition = "opacity 0.5s ease";
+        messageCard.style.opacity = 0;
+        setTimeout(() => {
+          messageCard.remove();
+        }, 500);
       }, 5000);
     }
 
@@ -545,14 +520,15 @@
 
     // Escape HTML to prevent XSS
     function escapeHTML(str) {
-      return str.replace(/[&<>"']/g, 
-        tag => ({
+      return str.replace(/[&<>"']/g, tag => {
+        return {
           '&': '&amp;',
           '<': '&lt;',
           '>': '&gt;',
           '"': '&quot;',
           "'": '&#39;'
-        }[tag]));
+        }[tag];
+      });
     }
 
     // Polling for new messages (every 30 seconds)
@@ -560,10 +536,7 @@
       if (!supabaseClient) return;
       try {
         if (!document.getElementById('read-tab').classList.contains('active')) {
-          const { data, error } = await supabaseClient
-            .from('messages')
-            .select('id')
-            .gt('created_at', new Date(Date.now() - 300000).toISOString());
+          const { data, error } = await supabaseClient.from('messages').select('id').gt('created_at', new Date(Date.now() - 300000).toISOString());
           if (error) throw error;
           if (data) {
             const newMessages = data.filter(msg => !readMessages.includes(msg.id));
