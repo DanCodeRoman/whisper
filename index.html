@@ -326,6 +326,21 @@
       font-size: 1.5rem;
       cursor: pointer;
     }
+    /* DM Start Form styling */
+    #dm-start-form {
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+    #dm-start-form input {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+    }
+    #dm-start-form button {
+      padding: 0.5rem 1rem;
+    }
   </style>
 </head>
 <body>
@@ -439,12 +454,17 @@
 
     <!-- Direct Messaging Tab -->
     <div class="tab-content" id="direct-tab">
-      <!-- This element is used to display DM status messages -->
+      <!-- DM status element -->
       <div id="direct-status"></div>
+      <!-- DM Start Conversation Form -->
+      <form id="dm-start-form">
+        <input type="text" id="dm-recipient" placeholder="Recipient username" required>
+        <button type="submit">Start Conversation</button>
+      </form>
       <div class="dm-container" style="display: flex; gap: 1rem;">
         <!-- Conversation List -->
         <div id="dm-conversations" style="flex: 1; border: 1px solid var(--border-color); padding: 1rem; border-radius: 4px; height: 400px; overflow-y: auto; background: var(--card-background);">
-          <div class="loading"><span class="spinner"></span> Loading conversations...</div>
+          <!-- Initially no spinner on refresh -->
         </div>
         <!-- Conversation Detail Panel -->
         <div id="dm-chat-panel" style="flex: 2; border: 1px solid var(--border-color); padding: 1rem; border-radius: 4px; height: 400px; display: flex; flex-direction: column; background: var(--card-background);">
@@ -518,6 +538,22 @@
       if (e.target == loginModal) { loginModal.style.display = "none"; }
     });
 
+    // Check for stored user on page load
+    window.addEventListener('load', () => {
+      const storedUser = localStorage.getItem('currentUser');
+      if (storedUser) {
+        currentUser = JSON.parse(storedUser);
+        authControls.innerHTML = `<span>${currentUser.username}</span> <button id="logoutBtn">Logout</button>`;
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+          currentUser = null;
+          localStorage.removeItem('currentUser');
+          authControls.innerHTML = `<button id="signupBtn">Sign Up</button> <button id="loginBtn">Login</button>`;
+          document.getElementById('signupBtn').addEventListener('click', () => { signupModal.style.display = "block"; });
+          document.getElementById('loginBtn').addEventListener('click', () => { loginModal.style.display = "block"; });
+        });
+      }
+    });
+
     // Sign Up Form Submission (custom auth without hashing)
     signupForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -532,7 +568,7 @@
           .from('users')
           .insert([{ username, password }]);  // Storing plain text password (not secure!)
         if (error) throw error;
-        alert("Sign up successful! Please log in.");
+        // Instead of an alert, you may update a status element on the page
         signupModal.style.display = "none";
         signupForm.reset();
       } catch (error) {
@@ -561,12 +597,14 @@
           throw new Error("Invalid username or password");
         }
         currentUser = data;
-        alert("Logged in as " + username);
+        // Store user info for persistent login
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
         loginModal.style.display = "none";
         loginForm.reset();
         authControls.innerHTML = `<span>${username}</span> <button id="logoutBtn">Logout</button>`;
         document.getElementById('logoutBtn').addEventListener('click', () => {
           currentUser = null;
+          localStorage.removeItem('currentUser');
           authControls.innerHTML = `<button id="signupBtn">Sign Up</button> <button id="loginBtn">Login</button>`;
           document.getElementById('signupBtn').addEventListener('click', () => { signupModal.style.display = "block"; });
           document.getElementById('loginBtn').addEventListener('click', () => { loginModal.style.display = "block"; });
@@ -602,11 +640,147 @@
     const dmChatMessages = document.getElementById('dm-chat-messages');
     const dmChatForm = document.getElementById('dm-chat-form');
     const dmMessageInput = document.getElementById('dm-message-input');
-    // NEW: Define the DM status element to fix the error
     const directStatus = document.getElementById('direct-status');
+    const dmStartForm = document.getElementById('dm-start-form');
+    const dmRecipientInput = document.getElementById('dm-recipient');
 
     // Local storage for read messages (for non-global messages)
     let readMessages = JSON.parse(localStorage.getItem('whisper_read_messages')) || [];
+
+    // Helper: loadDMConversations with optional spinner
+    async function loadDMConversations(showSpinner = true) {
+      if (!currentUser) {
+        dmConversations.innerHTML = '<p>Please log in to view direct messages.</p>';
+        return;
+      }
+      if (showSpinner) {
+        dmConversations.innerHTML = '<div class="loading"><span class="spinner"></span> Loading conversations...</div>';
+      }
+      try {
+        const username = currentUser.username;
+        const { data, error } = await supabaseClient
+          .from('direct_messages')
+          .select('*')
+          .or('sender.eq.' + username + ',recipient.eq.' + username)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        // Group messages by conversation partner (for one-on-one chats)
+        let conversations = {};
+        data.forEach(msg => {
+          let partner = msg.sender === username ? msg.recipient : msg.sender;
+          if (!conversations[partner]) {
+            conversations[partner] = { latest: msg, messages: [] };
+          }
+          if (new Date(msg.created_at) > new Date(conversations[partner].latest.created_at)) {
+            conversations[partner].latest = msg;
+          }
+          conversations[partner].messages.push(msg);
+        });
+        dmConversations.innerHTML = '';
+        if (Object.keys(conversations).length === 0) {
+          dmConversations.innerHTML = '<p>No direct message conversations yet.</p>';
+          return;
+        }
+        Object.keys(conversations).forEach(partner => {
+          const convDiv = document.createElement('div');
+          convDiv.className = 'dm-conversation';
+          convDiv.style.padding = '0.5rem';
+          convDiv.style.borderBottom = '1px solid var(--border-color)';
+          convDiv.style.cursor = 'pointer';
+          convDiv.innerHTML = `<strong>${partner}</strong><br><small>${escapeHTML(conversations[partner].latest.content)}</small>`;
+          convDiv.addEventListener('click', () => {
+            currentDMConversationPartner = partner;
+            loadDMChat(partner);
+            dmChatForm.style.display = 'block';
+          });
+          dmConversations.appendChild(convDiv);
+        });
+      } catch (error) {
+        console.error('Error loading DM conversations:', error);
+        dmConversations.innerHTML = '<p>Error loading conversations. Please try again later.</p>';
+      }
+    }
+
+    // Helper: loadDMChat with optional spinner
+    async function loadDMChat(partner, showSpinner = true) {
+      if (!currentUser) return;
+      if (showSpinner) {
+        dmChatMessages.innerHTML = '<div class="loading"><span class="spinner"></span> Loading chat...</div>';
+      }
+      try {
+        const username = currentUser.username;
+        const { data, error } = await supabaseClient
+          .from('direct_messages')
+          .select('*')
+          .or(`sender.eq.${username},recipient.eq.${username}`)
+          .order('created_at', { ascending: true });
+        if (error) throw error;
+        const conversation = data.filter(msg =>
+          (msg.sender === username && msg.recipient === partner) ||
+          (msg.sender === partner && msg.recipient === username)
+        );
+        dmChatMessages.innerHTML = '';
+        if (conversation.length === 0) {
+          dmChatMessages.innerHTML = '<p>No messages in this conversation yet.</p>';
+        } else {
+          conversation.forEach(msg => {
+            const msgDiv = document.createElement('div');
+            msgDiv.style.marginBottom = '0.5rem';
+            msgDiv.innerHTML = `<strong>${escapeHTML(msg.sender)}</strong>: ${escapeHTML(msg.content)}`;
+            dmChatMessages.appendChild(msgDiv);
+          });
+        }
+        dmChatMessages.scrollTop = dmChatMessages.scrollHeight;
+      } catch (error) {
+        console.error('Error loading DM chat:', error);
+        dmChatMessages.innerHTML = '<p>Error loading chat. Please try again later.</p>';
+      }
+    }
+
+    // Event listener for DM Start Conversation Form
+    dmStartForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const recipient = dmRecipientInput.value.trim();
+      if (!recipient) return;
+      currentDMConversationPartner = recipient;
+      loadDMChat(recipient);
+      dmChatForm.style.display = 'block';
+      // Optionally, refresh the conversation list so the new conversation appears
+      loadDMConversations();
+      dmRecipientInput.value = '';
+    });
+
+    // DM Chat Form Submission
+    dmChatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentUser || !currentDMConversationPartner) return;
+      const message = dmMessageInput.value.trim();
+      if (!message) return;
+      document.getElementById('dm-send-btn').disabled = true;
+      document.getElementById('dm-send-btn').innerHTML = '<span class="spinner"></span> Sending...';
+      try {
+        const dmId = crypto.randomUUID();
+        const dmObj = {
+          id: dmId,
+          sender: currentUser.username,
+          recipient: currentDMConversationPartner,
+          content: message,
+          created_at: new Date().toISOString()
+        };
+        const { error } = await supabaseClient.from('direct_messages').insert([dmObj]);
+        if (error) throw error;
+        dmMessageInput.value = '';
+        showStatus(directStatus, 'Direct message sent!', 'success');
+        loadDMChat(currentDMConversationPartner);
+        loadDMConversations(false);
+      } catch (error) {
+        console.error('Error sending DM:', error);
+        showStatus(directStatus, 'Failed to send direct message. Please try again.', 'error');
+      } finally {
+        document.getElementById('dm-send-btn').disabled = false;
+        document.getElementById('dm-send-btn').textContent = 'Send';
+      }
+    });
 
     // Tab switching
     tabs.forEach(tab => {
@@ -694,7 +868,6 @@
             <div class="message-author">${escapeHTML(message.author)}</div>
             <div class="message-content">${escapeHTML(message.content)}</div>
           `;
-          // One-time view: reveal and delete the message
           messageCard.addEventListener('click', () => revealMessage(message.id, messageCard));
           messageBoard.appendChild(messageCard);
         });
@@ -791,127 +964,38 @@
       }
     });
 
-    // DM: Load conversation threads for the logged in user
-    async function loadDMConversations() {
-      if (!currentUser) {
-        dmConversations.innerHTML = '<p>Please log in to view direct messages.</p>';
-        return;
-      }
-      dmConversations.innerHTML = '<div class="loading"><span class="spinner"></span> Loading conversations...</div>';
+    // Polling for new regular messages (every 30 seconds)
+    setInterval(async () => {
       try {
-        const username = currentUser.username;
-        const { data, error } = await supabaseClient
-          .from('direct_messages')
-          .select('*')
-          .or('sender.eq.' + username + ',recipient.eq.' + username)
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        // Group messages by conversation partner (for one-on-one chats)
-        let conversations = {};
-        data.forEach(msg => {
-          let partner = msg.sender === username ? msg.recipient : msg.sender;
-          if (!conversations[partner]) {
-            conversations[partner] = { latest: msg, messages: [] };
+        if (!document.getElementById('read-tab').classList.contains('active')) {
+          const { data, error } = await supabaseClient.from('messages').select('id').gt('created_at', new Date(Date.now() - 300000).toISOString());
+          if (error) throw error;
+          if (data) {
+            const newMessages = data.filter(msg => !readMessages.includes(msg.id));
+            if (newMessages.length > 0) updateUnreadCount(newMessages.length);
           }
-          // Save the latest message (by created_at)
-          if (new Date(msg.created_at) > new Date(conversations[partner].latest.created_at)) {
-            conversations[partner].latest = msg;
-          }
-          conversations[partner].messages.push(msg);
-        });
-        // Render conversation list
-        dmConversations.innerHTML = '';
-        if (Object.keys(conversations).length === 0) {
-          dmConversations.innerHTML = '<p>No direct message conversations yet.</p>';
-          return;
         }
-        Object.keys(conversations).forEach(partner => {
-          const convDiv = document.createElement('div');
-          convDiv.className = 'dm-conversation';
-          convDiv.style.padding = '0.5rem';
-          convDiv.style.borderBottom = '1px solid var(--border-color)';
-          convDiv.style.cursor = 'pointer';
-          convDiv.innerHTML = `<strong>${partner}</strong><br><small>${escapeHTML(conversations[partner].latest.content)}</small>`;
-          convDiv.addEventListener('click', () => {
-            currentDMConversationPartner = partner;
-            loadDMChat(partner);
-            dmChatForm.style.display = 'block';
-          });
-          dmConversations.appendChild(convDiv);
-        });
       } catch (error) {
-        console.error('Error loading DM conversations:', error);
-        dmConversations.innerHTML = '<p>Error loading conversations. Please try again later.</p>';
+        console.error('Error polling for new messages:', error);
       }
-    }
+    }, 30000);
 
-    // DM: Load chat messages for a conversation with a specific partner
-    async function loadDMChat(partner) {
-      if (!currentUser) return;
-      dmChatMessages.innerHTML = '<div class="loading"><span class="spinner"></span> Loading chat...</div>';
-      try {
-        const username = currentUser.username;
-        // Query messages where (sender==username and recipient==partner) OR (sender==partner and recipient==username)
-        const { data, error } = await supabaseClient
-          .from('direct_messages')
-          .select('*')
-          .or(`sender.eq.${username},recipient.eq.${username}`)
-          .order('created_at', { ascending: true });
-        if (error) throw error;
-        // Filter messages for the current conversation
-        const conversation = data.filter(msg =>
-          (msg.sender === username && msg.recipient === partner) ||
-          (msg.sender === partner && msg.recipient === username)
-        );
-        dmChatMessages.innerHTML = '';
-        if (conversation.length === 0) {
-          dmChatMessages.innerHTML = '<p>No messages in this conversation yet.</p>';
-        } else {
-          conversation.forEach(msg => {
-            const msgDiv = document.createElement('div');
-            msgDiv.style.marginBottom = '0.5rem';
-            msgDiv.innerHTML = `<strong>${escapeHTML(msg.sender)}</strong>: ${escapeHTML(msg.content)}`;
-            dmChatMessages.appendChild(msgDiv);
-          });
+    // Polling for new global chat messages (every 5 seconds) when the global tab is active
+    setInterval(async () => {
+      if (document.getElementById('global-tab').classList.contains('active')) {
+        loadGlobalChat();
+      }
+    }, 5000);
+
+    // Polling for DM updates when the Direct Messaging tab is active
+    setInterval(() => {
+      if (document.getElementById('direct-tab').classList.contains('active')) {
+        loadDMConversations(false);
+        if (currentDMConversationPartner) {
+          loadDMChat(currentDMConversationPartner, false);
         }
-        dmChatMessages.scrollTop = dmChatMessages.scrollHeight;
-      } catch (error) {
-        console.error('Error loading DM chat:', error);
-        dmChatMessages.innerHTML = '<p>Error loading chat. Please try again later.</p>';
       }
-    }
-
-    // DM Chat Form Submission
-    dmChatForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!currentUser || !currentDMConversationPartner) return;
-      const message = dmMessageInput.value.trim();
-      if (!message) return;
-      document.getElementById('dm-send-btn').disabled = true;
-      document.getElementById('dm-send-btn').innerHTML = '<span class="spinner"></span> Sending...';
-      try {
-        const dmId = crypto.randomUUID();
-        const dmObj = {
-          id: dmId,
-          sender: currentUser.username,
-          recipient: currentDMConversationPartner,
-          content: message,
-          created_at: new Date().toISOString()
-        };
-        const { error } = await supabaseClient.from('direct_messages').insert([dmObj]);
-        if (error) throw error;
-        dmMessageInput.value = '';
-        showStatus(directStatus, 'Direct message sent!', 'success');
-        loadDMChat(currentDMConversationPartner);
-        loadDMConversations();
-      } catch (error) {
-        console.error('Error sending DM:', error);
-        showStatus(directStatus, 'Failed to send direct message. Please try again.', 'error');
-      } finally {
-        document.getElementById('dm-send-btn').disabled = false;
-        document.getElementById('dm-send-btn').textContent = 'Send';
-      }
-    });
+    }, 5000);
 
     // Helper to show status messages
     function showStatus(element, message, type) {
@@ -943,39 +1027,6 @@
         }[tag];
       });
     }
-
-    // Polling for new regular messages (every 30 seconds)
-    setInterval(async () => {
-      try {
-        if (!document.getElementById('read-tab').classList.contains('active')) {
-          const { data, error } = await supabaseClient.from('messages').select('id').gt('created_at', new Date(Date.now() - 300000).toISOString());
-          if (error) throw error;
-          if (data) {
-            const newMessages = data.filter(msg => !readMessages.includes(msg.id));
-            if (newMessages.length > 0) updateUnreadCount(newMessages.length);
-          }
-        }
-      } catch (error) {
-        console.error('Error polling for new messages:', error);
-      }
-    }, 30000);
-
-    // Polling for new global chat messages (every 5 seconds) when the global tab is active
-    setInterval(async () => {
-      if (document.getElementById('global-tab').classList.contains('active')) {
-        loadGlobalChat();
-      }
-    }, 5000);
-
-    // Polling for DM updates when the Direct Messaging tab is active
-    setInterval(() => {
-      if (document.getElementById('direct-tab').classList.contains('active')) {
-        loadDMConversations();
-        if (currentDMConversationPartner) {
-          loadDMChat(currentDMConversationPartner);
-        }
-      }
-    }, 5000);
   </script>
 </body>
 </html>
