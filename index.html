@@ -482,7 +482,7 @@
 
     // Supabase Configuration
     const SUPABASE_URL = 'https://epdosrdlkdtbyqqffvcw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZG9zcmRsa2R0YnlxcWZmdmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTg3ODQsImV4cCI6MjA1NjUzNDc4NH0.XqQM4sPuO0mZfWDmXPhis1FAV75rUw1fZh1Fvr5ugyA';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     console.log("Supabase client created successfully");
 
@@ -516,7 +516,7 @@
       if (e.target == loginModal) { loginModal.style.display = "none"; }
     });
 
-    // Sign Up Form Submission (using a fake email format)
+    // Sign Up Form Submission (custom auth without hashing)
     signupForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const username = document.getElementById('signup-username').value.trim();
@@ -526,11 +526,9 @@
         return;
       }
       try {
-        const { data, error } = await supabaseClient.auth.signUp({
-          email: username + "@example.com",
-          password: password,
-          options: { data: { username: username } }
-        });
+        const { data, error } = await supabaseClient
+          .from('users')
+          .insert([{ username, password }]);  // Storing plain text password (not secure!)
         if (error) throw error;
         alert("Sign up successful! Please log in.");
         signupModal.style.display = "none";
@@ -541,7 +539,7 @@
       }
     });
 
-    // Login Form Submission
+    // Login Form Submission (custom auth without hashing)
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const username = document.getElementById('login-username').value.trim();
@@ -551,18 +549,21 @@
         return;
       }
       try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-          email: username + "@example.com",
-          password: password
-        });
-        if (error) throw error;
-        currentUser = data.user;
+        const { data, error } = await supabaseClient
+          .from('users')
+          .select('*')
+          .eq('username', username)
+          .eq('password', password)
+          .single();
+        if (error || !data) {
+          throw new Error("Invalid username or password");
+        }
+        currentUser = data;
         alert("Logged in as " + username);
         loginModal.style.display = "none";
         loginForm.reset();
         authControls.innerHTML = `<span>Welcome, ${username}</span> <button id="logoutBtn">Logout</button>`;
-        document.getElementById('logoutBtn').addEventListener('click', async () => {
-          await supabaseClient.auth.signOut();
+        document.getElementById('logoutBtn').addEventListener('click', () => {
           currentUser = null;
           authControls.innerHTML = `<button id="signupBtn">Sign Up</button> <button id="loginBtn">Login</button>`;
           document.getElementById('signupBtn').addEventListener('click', () => { signupModal.style.display = "block"; });
@@ -642,7 +643,6 @@
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="spinner"></span> Sending...';
       try {
-        if (!supabaseClient) throw new Error('Supabase client not initialized');
         const messageId = crypto.randomUUID();
         const messageObj = {
           id: messageId,
@@ -670,15 +670,9 @@
       messageBoard.innerHTML = '<div class="loading"><span class="spinner"></span> Loading messages...</div>';
       try {
         let messages = [];
-        if (supabaseClient) {
-          const { data, error } = await supabaseClient.from('messages').select('*').order('created_at', { ascending: false }).limit(50);
-          if (error) throw error;
-          messages = data.filter(message => !readMessages.includes(message.id));
-        } else {
-          messages = JSON.parse(localStorage.getItem('whisper_messages')) || [];
-          messages = messages.filter(message => !readMessages.includes(message.id));
-          messages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        }
+        const { data, error } = await supabaseClient.from('messages').select('*').order('created_at', { ascending: false }).limit(50);
+        if (error) throw error;
+        messages = data.filter(message => !readMessages.includes(message.id));
         messageBoard.innerHTML = '';
         if (messages.length === 0) {
           messageBoard.innerHTML = `
@@ -698,7 +692,7 @@
             <div class="message-author">${escapeHTML(message.author)}</div>
             <div class="message-content">${escapeHTML(message.content)}</div>
           `;
-          // When clicked, reveal and then delete the message (one-time view)
+          // One-time view: reveal and delete the message
           messageCard.addEventListener('click', () => revealMessage(message.id, messageCard));
           messageBoard.appendChild(messageCard);
         });
@@ -723,14 +717,11 @@
         localStorage.setItem('whisper_read_messages', JSON.stringify(readMessages));
       }
       try {
-        if (supabaseClient) {
-          const { error } = await supabaseClient.from('messages').delete().eq('id', messageId);
-          if (error) throw error;
-        }
+        const { error } = await supabaseClient.from('messages').delete().eq('id', messageId);
+        if (error) throw error;
       } catch (error) {
         console.error('Error deleting message:', error);
       }
-      // After 5 seconds, animate removal
       setTimeout(() => {
         messageCard.classList.add('fade-out');
         setTimeout(() => {
@@ -744,14 +735,9 @@
       globalChatContainer.innerHTML = '<div class="loading"><span class="spinner"></span> Loading global chat...</div>';
       try {
         let messages = [];
-        if (supabaseClient) {
-          const { data, error } = await supabaseClient.from('global_chat').select('*').order('created_at', { ascending: true });
-          if (error) throw error;
-          messages = data;
-        } else {
-          messages = JSON.parse(localStorage.getItem('global_chat')) || [];
-          messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        }
+        const { data, error } = await supabaseClient.from('global_chat').select('*').order('created_at', { ascending: true });
+        if (error) throw error;
+        messages = data;
         globalChatContainer.innerHTML = '';
         if (messages.length === 0) {
           globalChatContainer.innerHTML = '<p>No messages yet in Global Chat.</p>';
@@ -782,7 +768,6 @@
       globalSubmitBtn.disabled = true;
       globalSubmitBtn.innerHTML = '<span class="spinner"></span> Sending...';
       try {
-        if (!supabaseClient) throw new Error('Supabase client not initialized');
         const chatId = crypto.randomUUID();
         const chatObj = {
           id: chatId,
@@ -812,7 +797,7 @@
       }
       directMessagesContainer.innerHTML = '<div class="loading"><span class="spinner"></span> Loading direct messages...</div>';
       try {
-        const username = currentUser.user_metadata.username || currentUser.email.split('@')[0];
+        const username = currentUser.username;
         const { data, error } = await supabaseClient.from('direct_messages').select('*')
           .or(`sender.eq.${username},recipient.eq.${username}`)
           .order('created_at', { ascending: true });
@@ -853,7 +838,7 @@
         const dmId = crypto.randomUUID();
         const dmObj = {
           id: dmId,
-          sender: currentUser.user_metadata.username || currentUser.email.split('@')[0],
+          sender: currentUser.username,
           recipient: recipient,
           content: message,
           created_at: new Date().toISOString()
@@ -905,7 +890,6 @@
 
     // Polling for new regular messages (every 30 seconds)
     setInterval(async () => {
-      if (!supabaseClient) return;
       try {
         if (!document.getElementById('read-tab').classList.contains('active')) {
           const { data, error } = await supabaseClient.from('messages').select('id').gt('created_at', new Date(Date.now() - 300000).toISOString());
