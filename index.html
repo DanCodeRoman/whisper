@@ -562,7 +562,7 @@
         alert("Logged in as " + username);
         loginModal.style.display = "none";
         loginForm.reset();
-        authControls.innerHTML = `<span>Welcome, ${username}</span> <button id="logoutBtn">Logout</button>`;
+        authControls.innerHTML = `<span>${username}</span> <button id="logoutBtn">Logout</button>`;
         document.getElementById('logoutBtn').addEventListener('click', () => {
           currentUser = null;
           authControls.innerHTML = `<button id="signupBtn">Sign Up</button> <button id="loginBtn">Login</button>`;
