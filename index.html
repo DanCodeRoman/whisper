@@ -378,12 +378,9 @@
     const SUPABASE_URL = 'https://epdosrdlkdtbyqqffvcw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZG9zcmRsa2R0YnlxcWZmdmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTg3ODQsImV4cCI6MjA1NjUzNDc4NH0.XqQM4sPuO0mZfWDmXPhis1FAV75rUw1fZh1Fvr5ugyA';
     
-    
-    
-  
-   const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  console.log("Supabase client created successfully");
-
+    // Create the Supabase client and store it in a variable named "supabaseClient"
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log("Supabase client created successfully");
 
     // Read message history from local storage
     let readMessages = JSON.parse(localStorage.getItem('whisper_read_messages')) || [];
@@ -431,7 +428,7 @@
       submitBtn.innerHTML = '<span class="spinner"></span> Sending...';
       
       try {
-        if (!supabase) {
+        if (!supabaseClient) {
           throw new Error('Supabase client not initialized');
         }
         
@@ -448,7 +445,7 @@
         };
         
         // Save to Supabase
-        const { error } = await supabase
+        const { error } = await supabaseClient
           .from('messages')
           .insert([messageObj]);
         
@@ -464,7 +461,7 @@
         console.error('Error sending message:', error);
         
         // Fallback to using localStorage if Supabase isn't available
-        if (!supabase || error.message === 'Supabase client not initialized') {
+        if (!supabaseClient || error.message === 'Supabase client not initialized') {
           try {
             // Get existing messages from localStorage
             let localMessages = JSON.parse(localStorage.getItem('whisper_messages')) || [];
@@ -510,9 +507,9 @@
       try {
         let messages = [];
         
-        if (supabase) {
+        if (supabaseClient) {
           // Fetch messages from Supabase
-          const { data, error } = await supabase
+          const { data, error } = await supabaseClient
             .from('messages')
             .select('*')
             .order('created_at', { ascending: false })
@@ -586,11 +583,11 @@
       }
       
       try {
-        if (supabase) {
+        if (supabaseClient) {
           // Update read count in database
-          const { error } = await supabase
+          const { error } = await supabaseClient
             .from('messages')
-            .update({ read_count: supabase.rpc('increment', { x: 1 }) })
+            .update({ read_count: supabaseClient.rpc('increment', { x: 1 }) })
             .eq('id', messageId);
           
           if (error) throw error;
@@ -656,12 +653,12 @@
 
     // Polling for new messages (every 30 seconds)
     setInterval(async () => {
-      if (!supabase) return;
+      if (!supabaseClient) return;
       
       try {
         // Only check for new messages if not on the read tab
         if (!document.getElementById('read-tab').classList.contains('active')) {
-          const { data, error } = await supabase
+          const { data, error } = await supabaseClient
             .from('messages')
             .select('id')
             .gt('created_at', new Date(Date.now() - 300000).toISOString()); // Last 5 minutes
