@@ -378,16 +378,12 @@
     const SUPABASE_URL = 'https://epdosrdlkdtbyqqffvcw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwZG9zcmRsa2R0YnlxcWZmdmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5NTg3ODQsImV4cCI6MjA1NjUzNDc4NH0.XqQM4sPuO0mZfWDmXPhis1FAV75rUw1fZh1Fvr5ugyA';
     
-    let supabase = null;
     
-   try {
-  console.log("Attempting to create Supabase client...");
-  // The correct way to access the Supabase client with the UMD build
+    
+  
   supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   console.log("Supabase client created successfully");
-} catch (error) {
-  console.error('Supabase client initialization error:', error);
-}
+
 
     // Read message history from local storage
     let readMessages = JSON.parse(localStorage.getItem('whisper_read_messages')) || [];
