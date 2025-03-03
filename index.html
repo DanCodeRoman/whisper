@@ -439,6 +439,7 @@
 
     <!-- Direct Messaging Tab -->
     <div class="tab-content" id="direct-tab">
+      <!-- This element is used to display DM status messages -->
       <div id="direct-status"></div>
       <div class="dm-container" style="display: flex; gap: 1rem;">
         <!-- Conversation List -->
@@ -486,7 +487,7 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     console.log("Supabase client created successfully");
 
-    // Global variable for authenticated user and current DM conversation
+    // Global variable for authenticated user and current DM conversation partner
     let currentUser = null;
     let currentDMConversationPartner = null;
 
@@ -601,6 +602,8 @@
     const dmChatMessages = document.getElementById('dm-chat-messages');
     const dmChatForm = document.getElementById('dm-chat-form');
     const dmMessageInput = document.getElementById('dm-message-input');
+    // NEW: Define the DM status element to fix the error
+    const directStatus = document.getElementById('direct-status');
 
     // Local storage for read messages (for non-global messages)
     let readMessages = JSON.parse(localStorage.getItem('whisper_read_messages')) || [];
