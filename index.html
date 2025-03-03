@@ -381,7 +381,7 @@
     let supabase = null;
     
     try {
-      supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     } catch (error) {
       console.error('Supabase client not initialized:', error);
     }
