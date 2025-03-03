@@ -380,7 +380,8 @@
           throw new Error('Supabase client not initialized');
         }
         
-        const messageId = generateUniqueId();
+        // Generate a valid UUID for the message id using crypto.randomUUID()
+        const messageId = crypto.randomUUID();
         const messageObj = {
           id: messageId,
           author: author,
@@ -404,7 +405,7 @@
           try {
             let localMessages = JSON.parse(localStorage.getItem('whisper_messages')) || [];
             const messageObj = {
-              id: generateUniqueId(),
+              id: crypto.randomUUID(),
               author: author,
               content: message,
               created_at: new Date().toISOString(),
@@ -497,7 +498,7 @@
       
       try {
         if (supabaseClient) {
-          // Call the RPC function to increment read_count
+          // Call the RPC function to increment read_count using a valid UUID messageId
           const { error } = await supabaseClient.rpc('increment_read_count', { message_id: messageId });
           if (error) throw error;
         } else {
@@ -537,9 +538,9 @@
       }
     }
 
-    // Generate a unique ID
+    // Generate a unique ID using crypto.randomUUID()
     function generateUniqueId() {
-      return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+      return crypto.randomUUID();
     }
 
     // Escape HTML to prevent XSS
