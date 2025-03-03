@@ -330,15 +330,17 @@
     #dm-start-form {
       margin-bottom: 1rem;
       display: flex;
+      flex-direction: column;
       gap: 0.5rem;
     }
-    #dm-start-form input {
-      flex: 1;
+    #dm-start-form input,
+    #dm-start-form textarea {
       padding: 0.5rem;
       border: 1px solid var(--border-color);
       border-radius: 4px;
     }
     #dm-start-form button {
+      align-self: flex-end;
       padding: 0.5rem 1rem;
     }
   </style>
@@ -456,9 +458,10 @@
     <div class="tab-content" id="direct-tab">
       <!-- DM status element -->
       <div id="direct-status"></div>
-      <!-- DM Start Conversation Form -->
+      <!-- DM Start Conversation Form with additional message content -->
       <form id="dm-start-form">
         <input type="text" id="dm-recipient" placeholder="Recipient username" required>
+        <textarea id="dm-initial-message" placeholder="Type your message here..." required></textarea>
         <button type="submit">Start Conversation</button>
       </form>
       <div class="dm-container" style="display: flex; gap: 1rem;">
@@ -472,8 +475,8 @@
             <p>Select a conversation</p>
           </div>
           <form id="dm-chat-form" style="margin-top: 1rem; display: none;">
-            <input type="text" id="dm-message-input" placeholder="Type your message..." style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px;">
-            <button type="submit" id="dm-send-btn" style="margin-top: 0.5rem;">Send</button>
+            <input type="text" id="dm-message-input" placeholder="Type your message here..." style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px;">
+            <button type="submit" id="dm-send-btn" style="margin-top: 0.5rem;">Send Direct Message</button>
           </form>
         </div>
       </div>
@@ -566,9 +569,8 @@
       try {
         const { data, error } = await supabaseClient
           .from('users')
-          .insert([{ username, password }]);  // Storing plain text password (not secure!)
+          .insert([{ username, password }]);
         if (error) throw error;
-        // Instead of an alert, you may update a status element on the page
         signupModal.style.display = "none";
         signupForm.reset();
       } catch (error) {
@@ -597,7 +599,6 @@
           throw new Error("Invalid username or password");
         }
         currentUser = data;
-        // Store user info for persistent login
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         loginModal.style.display = "none";
         loginForm.reset();
@@ -664,7 +665,6 @@
           .or('sender.eq.' + username + ',recipient.eq.' + username)
           .order('created_at', { ascending: false });
         if (error) throw error;
-        // Group messages by conversation partner (for one-on-one chats)
         let conversations = {};
         data.forEach(msg => {
           let partner = msg.sender === username ? msg.recipient : msg.sender;
@@ -737,17 +737,19 @@
       }
     }
 
-    // Event listener for DM Start Conversation Form
+    // DM Start Conversation Form Submission (now with initial message content)
     dmStartForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const recipient = dmRecipientInput.value.trim();
-      if (!recipient) return;
+      const initialMessage = document.getElementById('dm-initial-message').value.trim();
+      if (!recipient || !initialMessage) return;
       currentDMConversationPartner = recipient;
+      // For demo: In a real app, you'd insert the initial message into the DM thread in the backend.
+      // Here, we simply load the conversation and log the initial message.
+      console.log("Starting conversation with", recipient, "with message:", initialMessage);
       loadDMChat(recipient);
       dmChatForm.style.display = 'block';
-      // Optionally, refresh the conversation list so the new conversation appears
-      loadDMConversations();
-      dmRecipientInput.value = '';
+      dmStartForm.reset();
     });
 
     // DM Chat Form Submission
@@ -778,7 +780,7 @@
         showStatus(directStatus, 'Failed to send direct message. Please try again.', 'error');
       } finally {
         document.getElementById('dm-send-btn').disabled = false;
-        document.getElementById('dm-send-btn').textContent = 'Send';
+        document.getElementById('dm-send-btn').textContent = 'Send Direct Message';
       }
     });
 
